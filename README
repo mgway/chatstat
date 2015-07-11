@@ -1,0 +1,28 @@
+# Twitch Chat Statistics
+
+Do you stream on Twitch? Did you ever want to know how many viewers in your chat are followers? Well, wonder no longer!
+
+## Runtime Requirements
+
+* Java JDK 1.7
+
+## Development Requirements
+
+* Maven 3.0+
+* Squirrel SQL is useful
+
+## Building it
+
+* Clone from github
+* Run `mvn install`
+* Run `mvn spring-boot:run`
+* Browse to http://localhost:8080
+* Good luck
+
+
+## To Do/Forthcoming Features
+* Graphs 'n' stuff
+* Subscriber counts
+* Flexible retry intervals
+* Less noisy viewer count updates
+
