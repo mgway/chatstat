@@ -8,7 +8,6 @@ import javax.jms.Queue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jms.core.JmsMessagingTemplate;
 import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;
 
 import com.matthewgalloway.stats.domain.Viewer;
@@ -27,12 +26,13 @@ public class FollowerController {
 	
 	
 	@MessageMapping("/hello")
-	@SendTo("/topic/viewers")
     public Viewer handle(String streamerName) {
 		
 		if (streamerName.trim().isEmpty()) {
 			return null;
 		}
+		
+		streamerName = streamerName.toLowerCase();
 		
 		List<String> usernames = client.getChatMembers(streamerName);
 		

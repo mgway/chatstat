@@ -26,5 +26,6 @@ public class InsertViewer implements Executable {
 				ps.setString(3, viewer.getStreamer());
 			}
 		});
+		
 	}
 }

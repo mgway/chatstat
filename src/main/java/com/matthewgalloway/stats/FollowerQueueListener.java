@@ -30,12 +30,12 @@ public class FollowerQueueListener {
 		Viewer viewer = new Viewer(params.get("username"), params.get("streamer"), false);
 		
 		try {
-			viewer.setFollower(db.query(new IsViewerFollowing(viewer.getName(), viewer.getStreamer())));
+			viewer.setFollower(db.query(new IsViewerFollowing(viewer)));
 		} catch (EmptyResultDataAccessException ex) {
 			viewer.setFollower(client.isFollowing(viewer.getStreamer(), viewer.getName()));
 			db.execute(new InsertViewer(viewer));
 		}
 		
-		this.template.convertAndSend("/topic/viewers", viewer);
+		this.template.convertAndSend("/topic/" + params.get("streamer"), viewer);
 	}
 }

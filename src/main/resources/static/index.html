@@ -12,8 +12,11 @@
     <script src="//cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.js"></script>
     <script type="text/javascript">
         var stompClient = null,
-        	chatFollowerCount = 0;
-        	chatViewerCount = 0;
+        	chatFollowerCount = 0,
+        	chatViewerCount = 0,
+        	interval = null,
+        	subscription = null, 
+        	lastSubscribedTo = null;
         
         function setConnected(connected) {
             document.getElementById('connect').disabled = connected;
@@ -26,9 +29,6 @@
             stompClient.connect({}, function(frame) {
                 setConnected(true);
                 console.log('Connected: ' + frame);
-                stompClient.subscribe('/topic/viewers', function(greeting){
-                	addViewer(JSON.parse(greeting.body));
-                });
             });
         }
 
@@ -41,9 +41,21 @@
         }
 
         function sendName() {
-            var name = document.getElementById('name').value;
+            var name = document.getElementById('name').value.toLowerCase();
             stompClient.send("/app/hello", {}, name);
             
+            if (lastSubscribedTo != name && lastSubscribedTo != null) {
+        		subscription.unsubscribe();
+        		subscription == null;
+        	}
+            
+            if (subscription == null) {
+            	lastSubscribedTo = name;
+            	subscription = stompClient.subscribe('/topic/' + name, function(viewer){
+                	addViewer(JSON.parse(viewer.body));
+                });
+            }
+        
             chatFollowerCount = 0;
             chatViewerCount = 0;
             
@@ -52,6 +64,16 @@
    			document.getElementById('difference').innerHTML = 0;
    			document.getElementById('follower-table').innerHTML = "";
    			document.getElementById('not-follower-table').innerHTML = "";
+        }
+        
+        function updateAutomatically() {
+        	var isChecked = document.getElementById('refresh-check').checked;
+        	
+        	if (isChecked) {
+        		interval = setInterval(function(){ sendName(); }, 30000); //
+        	} else {
+        		interval.clearInterval();
+        	}
         }
         
         function addViewer(response) {
@@ -101,6 +123,11 @@
 					class="form-control" id="name" placeholder="itmejp">
 			</div>
 			<button type="submit" class="btn btn-primary" onclick="sendName();">Calculate!</button>
+			<div class="checkbox">
+				<label> 
+					<input type="checkbox" id="refresh-check" onclick="updateAutomatically();"> Update every 7 minutes
+				</label>
+			</div>
 		</div>
 
 		<div class="row">
@@ -159,6 +186,5 @@
 			</div>
 		</div>
 	</div>
-	
 </body>
 </html>
