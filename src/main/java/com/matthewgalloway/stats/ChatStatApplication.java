@@ -16,6 +16,8 @@ import org.springframework.jdbc.datasource.init.DataSourceInitializer;
 import org.springframework.jdbc.datasource.init.DatabasePopulator;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.jms.annotation.EnableJms;
+import org.springframework.web.servlet.ViewResolver;
+import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
 @SpringBootApplication
 @EnableJms
@@ -45,7 +47,7 @@ public class ChatStatApplication {
 
 		return populator;
 	}
-
+	
 	@Bean
 	public DataSource dataSource() {
 		JdbcDataSource ds = new JdbcDataSource();
@@ -61,6 +63,14 @@ public class ChatStatApplication {
 		return new JdbcTemplate(this.dataSource());
 	}
 
+	@Bean
+    public ViewResolver getViewResolver(){
+        InternalResourceViewResolver resolver = new InternalResourceViewResolver();
+        resolver.setPrefix("/templates/");
+        resolver.setSuffix(".html");
+        return resolver;
+    }
+	
 	public static void main(String[] args) {
 		SpringApplication.run(ChatStatApplication.class, args);
 	}

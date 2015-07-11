@@ -52,7 +52,7 @@ public class TwitchApiClient {
 	public List<String> getChatMembers(String streamer) {
 		String url = String.format("%s/group/user/%s/chatters", TMI_ROOT, streamer);
 		List<String> names = new ArrayList<String>();
-		
+
 		HttpResponse<JsonNode> response;
 		try {
 			response = Unirest.get(url)

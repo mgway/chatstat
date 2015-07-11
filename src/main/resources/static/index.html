@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
+    <title>Twitch Chat Statistics</title>
+    
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    
+    <script src="//cdnjs.cloudflare.com/ajax/libs/sockjs-client/0.3.4/sockjs.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.js"></script>
+    <script type="text/javascript">
+        var stompClient = null,
+        	chatFollowerCount = 0;
+        	chatViewerCount = 0;
+        
+        function setConnected(connected) {
+            document.getElementById('connect').disabled = connected;
+            document.getElementById('disconnect').disabled = !connected;
+        }
+
+        function connect() {
+            var socket = new SockJS('/hello');
+            stompClient = Stomp.over(socket);
+            stompClient.connect({}, function(frame) {
+                setConnected(true);
+                console.log('Connected: ' + frame);
+                stompClient.subscribe('/topic/viewers', function(greeting){
+                	addViewer(JSON.parse(greeting.body));
+                });
+            });
+        }
+
+        function disconnect() {
+            if (stompClient != null) {
+                stompClient.disconnect();
+            }
+            setConnected(false);
+            console.log("Disconnected");
+        }
+
+        function sendName() {
+            var name = document.getElementById('name').value;
+            stompClient.send("/app/hello", {}, name);
+            
+            chatFollowerCount = 0;
+            chatViewerCount = 0;
+            
+            document.getElementById('viewer-count').innerHTML = 0;
+   			document.getElementById('follower-count').innerHTML = 0;
+   			document.getElementById('difference').innerHTML = 0;
+   			document.getElementById('follower-table').innerHTML = "";
+   			document.getElementById('not-follower-table').innerHTML = "";
+        }
+        
+        function addViewer(response) {
+        	
+        	var viewerEl = document.getElementById('viewer-count'),
+        		followerEl = document.getElementById('follower-count'),
+        		differenceEl = document.getElementById('difference'),
+        		table = document.getElementById('follower-table'),
+        		notTable = document.getElementById('not-follower-table'),
+            	tr = document.createElement('tr'),
+            	td1 = document.createElement('td'),
+            	td2 = document.createElement('td');
+        	
+        	chatViewerCount += 1;
+        	if(response.follower) {
+        		chatFollowerCount += 1;
+        	}
+        	
+        	viewerEl.innerHTML = chatViewerCount;
+        	followerEl.innerHTML = chatFollowerCount;
+        	difference.innerHTML = chatViewerCount - chatFollowerCount;
+        	
+            td1.appendChild(document.createTextNode(response.name));
+            td2.appendChild(document.createTextNode(response.follower));
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            if(response.follower){
+            	table.appendChild(tr);
+            } else {
+            	notTable.appendChild(tr);
+            }
+        }
+    </script>
+</head>
+<body onload="connect()">
+	<noscript>
+		<h2 style="color: #ff0000">Seems your browser doesn't support
+			Javascript! Websocket relies on Javascript being enabled. Please
+			enable Javascript and reload this page!</h2>
+	</noscript>
+	<div class="container">
+		<h1>Twitch Chat Statistics<span style="font-size: small"> (beta)</span></h1>
+
+		<div class="form-inline">
+			<div class="form-group">
+				<label for="name">Streamer Name</label> <input type="text"
+					class="form-control" id="name" placeholder="itmejp">
+			</div>
+			<button type="submit" class="btn btn-primary" onclick="sendName();">Calculate!</button>
+		</div>
+
+		<div class="row">
+			<div class="col-md-3">
+				<table class="table">
+					<thead>
+						<tr>
+							<th><h3>Viewers</h3></th>
+							<th><h3>Followers</h3></th>
+							<th><h3>Diff.</h3></th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><h3 id="viewer-count"></h3></td>
+							<td><h3 id="follower-count"></h3></td>
+							<td><h3 id="difference"></h3></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div class="col-md-3 col-md-offset-6">
+				<div>
+					<h5>Websocket Debug</h5>
+					<button class="btn btn-success btn-sm" id="connect" onclick="connect();">Connect</button>
+					<button class="btn btn-danger btn-sm" id="disconnect" disabled="disabled"
+						onclick="disconnect();">Disconnect</button>
+				</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-md-4">
+				<table class="table table-striped">
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>Follows?</th>
+						</tr>
+					</thead>
+					<tbody id="follower-table">
+					</tbody>
+				</table>
+			</div>
+			
+			<div class="col-md-4 col-md-offset-2">
+				<table class="table table-striped">
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>Follows?</th>
+						</tr>
+					</thead>
+					<tbody id="not-follower-table">
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+	
+</body>
+</html>
