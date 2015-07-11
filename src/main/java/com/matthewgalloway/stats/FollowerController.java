@@ -32,7 +32,7 @@ public class FollowerController {
 	private transient DatabaseService db;
 	
 	@Autowired
-	private transient IrcClient irc;
+	private transient TwitchApiClient client;
 
 	@RequestMapping("/")
 	@ResponseBody
@@ -50,7 +50,7 @@ public class FollowerController {
 	@RequestMapping("/fetch")
 	@ResponseBody
 	String fetch() {
-		List<String> usernames = irc.connect("#" + USERNAME);
+		List<String> usernames = client.getChatMembers(USERNAME);
 		
 		HashMap<String, String> params = new HashMap<String, String>();
 		params.put("streamer", USERNAME);
