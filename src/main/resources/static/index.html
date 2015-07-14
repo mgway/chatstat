@@ -8,80 +8,104 @@
     
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
     
+    <style type="text/css">
+    	table#summary th + th { border-left:1px solid #eee; }
+    	table#summary td + td { border-left:1px solid #eee; }
+    </style>
+    
     <script src="//cdnjs.cloudflare.com/ajax/libs/sockjs-client/0.3.4/sockjs.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.js"></script>
+    <script src="//code.jquery.com/jquery-1.11.3.min.js"></script>
+    
     <script type="text/javascript">
-        var stompClient = null,
-        	chatFollowerCount = 0,
-        	chatViewerCount = 0,
-        	interval = null,
-        	subscription = null, 
-        	lastSubscribedTo = null;
+		var stompClient = null,
+			chatFollowerCount = 0,
+			chatViewerCount = 0,
+			chatSubscriberCount = 0,
+			interval = null,
+			subscription = null, 
+			lastSubscribedTo = null;
         
-        function setConnected(connected) {
-            document.getElementById('connect').disabled = connected;
-            document.getElementById('disconnect').disabled = !connected;
-        }
+		function setConnected(connected) {
+			document.getElementById('connect').disabled = connected;
+			document.getElementById('disconnect').disabled = !connected;
+		}
 
-        function connect() {
-            var socket = new SockJS('/hello');
-            stompClient = Stomp.over(socket);
-            stompClient.connect({}, function(frame) {
-                setConnected(true);
-                console.log('Connected: ' + frame);
-            });
-        }
+		function connect() {
+			var socket = new SockJS('/hello');
+			stompClient = Stomp.over(socket);
+			stompClient.connect({}, function(frame) {
+				setConnected(true);
+				console.log('Connected: ' + frame);
+				
+				stompClient.subscribe('/topic/meta', function(stream){
+					handleMetadata(JSON.parse(stream.body));
+				});
+				
+				stompClient.subscribe('/topic/error', function(stream){
+					console.log(JSON.parse(stream.body));
+				});
+			});
+		}
 
-        function disconnect() {
-            if (stompClient != null) {
-                stompClient.disconnect();
-            }
-            setConnected(false);
-            console.log("Disconnected");
-        }
+		function disconnect() {
+			if (stompClient != null) {	
+				stompClient.disconnect();
+			}
+			setConnected(false);
+			console.log("Disconnected");
+		}
 
+		function reset() {
+			chatFollowerCount = 0;
+			chatSubscriberCount = 0;
+			chatViewerCount = 0;
+			         
+			$('#viewer-count').text("0");
+			$('#chatter-count').text("0");
+			$('#follower-count').text("0");
+			$('#subscriber-count').text("0");
+			$('#follower-table').html("");
+			$('#not-follower-table').html("");
+		}
+        
         function sendName() {
-            var name = document.getElementById('name').value.toLowerCase();
-            stompClient.send("/app/hello", {}, name);
+            var name = $('#name').val().toLowerCase();
+            
+            reset();
             
             if (lastSubscribedTo != name && lastSubscribedTo != null) {
         		subscription.unsubscribe();
-        		subscription == null;
+        		subscription = null;
         	}
             
             if (subscription == null) {
             	lastSubscribedTo = name;
             	subscription = stompClient.subscribe('/topic/' + name, function(viewer){
                 	addViewer(JSON.parse(viewer.body));
-                });
+                });	
             }
-        
-            chatFollowerCount = 0;
-            chatViewerCount = 0;
             
-            document.getElementById('viewer-count').innerHTML = 0;
-   			document.getElementById('follower-count').innerHTML = 0;
-   			document.getElementById('difference').innerHTML = 0;
-   			document.getElementById('follower-table').innerHTML = "";
-   			document.getElementById('not-follower-table').innerHTML = "";
+            stompClient.send("/app/hello", {}, name);
         }
         
-        function updateAutomatically() {
-        	var isChecked = document.getElementById('refresh-check').checked;
-        	
-        	if (isChecked) {
-        		interval = setInterval(function(){ sendName(); }, 420000); //
-        	} else {
-        		interval.clearInterval();
-        	}
-        }
+		function updateAutomatically() {
+			var isChecked = document.getElementById('refresh-check').checked;
+			
+			if (isChecked) {
+				interval = setInterval(function(){ sendName(); }, 420000); //
+			} else {
+				interval.clearInterval();
+			}
+		}
+        
+		function handleMetadata(response) {
+			$("#viewer-count").text(response.totalViewerCount);
+		}
         
         function addViewer(response) {
         	
-        	var viewerEl = document.getElementById('viewer-count'),
-        		followerEl = document.getElementById('follower-count'),
-        		differenceEl = document.getElementById('difference'),
-        		table = document.getElementById('follower-table'),
+        	var table = document.getElementById('follower-table'),
         		notTable = document.getElementById('not-follower-table'),
             	tr = document.createElement('tr'),
             	td1 = document.createElement('td'),
@@ -92,16 +116,19 @@
         		chatFollowerCount += 1;
         	}
         	
-        	viewerEl.innerHTML = chatViewerCount;
-        	followerEl.innerHTML = chatFollowerCount;
-        	difference.innerHTML = chatViewerCount - chatFollowerCount;
+        	$("#chatter-count").text(chatViewerCount);
+        	var followersEl = "" + chatFollowerCount + " <span style='font-size: smaller'> (" + ((chatFollowerCount/(chatViewerCount)) * 100).toFixed(1) + "%)</span>"
+        	$("#follower-count").html(followersEl);
+        	
+        	var subscribersEl = "" + chatSubscriberCount + " <span style='font-size: smaller'> (" + ((chatSubscriberCount/(chatViewerCount)) * 100).toFixed(1) + "%)</span>"
+        	$("#subscriber-count").html(subscribersEl);
         	
             td1.appendChild(document.createTextNode(response.name));
             td2.appendChild(document.createTextNode(response.follower));
             tr.appendChild(td1);
             tr.appendChild(td2);
             if(response.follower){
-            	table.appendChild(tr);
+            	//table.appendChild(tr);
             } else {
             	notTable.appendChild(tr);
             }
@@ -130,21 +157,24 @@
 			</div>
 		</div>
 
-		<div class="row">
+		<div class="row" style="padding-top: 20px;">
 			<div class="col-md-3">
-				<table class="table">
+				<h2>Overview</h2>
+				<table class="table" id="summary">
 					<thead>
 						<tr>
 							<th><h3>Viewers</h3></th>
+							<th><h3>Chatters</h3></th>
 							<th><h3>Followers</h3></th>
-							<th><h3>Diff.</h3></th>
+							<th><h3>Subscribers</h3></th>
 						</tr>
 					</thead>
 					<tbody>
 						<tr>
 							<td><h3 id="viewer-count"></h3></td>
+							<td><h3 id="chatter-count"></h3></td>
 							<td><h3 id="follower-count"></h3></td>
-							<td><h3 id="difference"></h3></td>
+							<td><h3 id="subscriber-count"></h3></td>
 						</tr>
 					</tbody>
 				</table>

@@ -1,49 +1,83 @@
 package com.matthewgalloway.stats;
 
-import java.util.HashMap;
-import java.util.List;
-
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.ObjectMessage;
 import javax.jms.Queue;
+import javax.jms.Session;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jms.core.JmsMessagingTemplate;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jms.core.JmsTemplate;
+import org.springframework.jms.core.MessageCreator;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 
-import com.matthewgalloway.stats.domain.Viewer;
+import com.matthewgalloway.stats.db.InsertDatapointStub;
+import com.matthewgalloway.stats.domain.Stream;
+import com.matthewgalloway.stats.framework.DatabaseService;
 
 @Controller
 public class FollowerController {
 	
 	@Autowired
-	private JmsMessagingTemplate jmsMessagingTemplate;
+	private JmsTemplate jmsTemplate;
 
 	@Autowired
+	@Qualifier("beginViewersUpdate")
 	private Queue queue;
 	
 	@Autowired
-	private transient TwitchApiClient client;
+	private transient DatabaseService db;
 	
+	@Autowired
+	private transient TwitchApiClient client;
+		
 	
 	@MessageMapping("/hello")
-    public Viewer handle(String streamerName) {
+	@SendTo("/topic/meta")
+    public Stream handle(String streamerName) {
 		
 		if (streamerName.trim().isEmpty()) {
-			return null;
+			throw new StreamException("Streamer name is empty");
 		}
-		
 		streamerName = streamerName.toLowerCase();
 		
-		List<String> usernames = client.getChatMembers(streamerName);
+		final Stream stream = client.getStreamData(streamerName);
 		
-		HashMap<String, String> params = new HashMap<String, String>();
-		params.put("streamer", streamerName);
-				
-		for(String name : usernames) {
-			params.put("username", name);
-			this.jmsMessagingTemplate.convertAndSend(this.queue, params);
+		if (stream != null) {
+			InsertDatapointStub stub = new InsertDatapointStub(streamerName);
+			db.execute(stub);
+			final long datapointId = stub.getId();
+			
+			this.jmsTemplate.send(this.queue, new MessageCreator() {
+	            public Message createMessage(Session session) throws JMSException {
+	                ObjectMessage message = session.createObjectMessage(stream);
+	                message.setLongProperty("datapointId", datapointId);
+	                return message;
+	            }
+	        });
+			
+			return stream;
 		}
 		
-        return null;
+        throw new StreamException("Stream is offline");
     }
+	
+	@MessageExceptionHandler
+	@SendTo(value="/topic/error")
+    public String handleException(StreamException exception) {
+        return exception.getMessage();
+    }
+	
+	private class StreamException extends RuntimeException  {
+		private static final long serialVersionUID = 1L;
+
+		public StreamException(String s) {
+			super(s);
+		}
+	} 
 }

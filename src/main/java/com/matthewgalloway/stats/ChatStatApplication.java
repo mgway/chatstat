@@ -16,8 +16,6 @@ import org.springframework.jdbc.datasource.init.DataSourceInitializer;
 import org.springframework.jdbc.datasource.init.DatabasePopulator;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.jms.annotation.EnableJms;
-import org.springframework.web.servlet.ViewResolver;
-import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
 @SpringBootApplication
 @EnableJms
@@ -27,9 +25,19 @@ public class ChatStatApplication {
 	@Value("classpath:schema.sql")
 	private Resource H2_SCHEMA_SCRIPT;
 
-	@Bean
-	public Queue queue() {
-		return new ActiveMQQueue("chatstat.followers");
+	@Bean(name="beginViewersUpdate")
+	public Queue viewersQueue() {
+		return new ActiveMQQueue("chatstat.viewers");
+	}
+	
+	@Bean(name="lookupViewer")
+	public Queue viewerQueue() {
+		return new ActiveMQQueue("chatstat.viewers.viewer");
+	}
+	
+	@Bean(name="lookupViewerFromApi")
+	public Queue viewerApiQueue() {
+		return new ActiveMQQueue("chatstat.followers.viewer.call");
 	}
 
 	@Bean
@@ -51,7 +59,7 @@ public class ChatStatApplication {
 	@Bean
 	public DataSource dataSource() {
 		JdbcDataSource ds = new JdbcDataSource();
-		ds.setURL("jdbc:h2:./stat.v1;");
+		ds.setURL("jdbc:h2:./stat.v2;");
 		ds.setUser("sa");
 		ds.setPassword("");
 
@@ -63,14 +71,6 @@ public class ChatStatApplication {
 		return new JdbcTemplate(this.dataSource());
 	}
 
-	@Bean
-    public ViewResolver getViewResolver(){
-        InternalResourceViewResolver resolver = new InternalResourceViewResolver();
-        resolver.setPrefix("/templates/");
-        resolver.setSuffix(".html");
-        return resolver;
-    }
-	
 	public static void main(String[] args) {
 		SpringApplication.run(ChatStatApplication.class, args);
 	}

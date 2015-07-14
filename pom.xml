@@ -36,7 +36,6 @@
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
-			<version>1.4.187</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>
@@ -59,12 +58,19 @@
 		</dependency>
 	</dependencies>
 	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
-		</plugins>
+	<plugins>
+		<plugin>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-maven-plugin</artifactId>
+			<dependencies>
+				<dependency>
+					<groupId>org.springframework</groupId>
+					<artifactId>springloaded</artifactId>
+					<version>1.2.0.RELEASE</version>
+				</dependency>
+			</dependencies>
+		</plugin>
+	</plugins>
 	</build>
 	<groupId>com.matthewgalloway</groupId>
 	<version>0.1</version>

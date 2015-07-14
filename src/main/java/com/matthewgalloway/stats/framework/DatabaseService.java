@@ -16,7 +16,9 @@ public class DatabaseService {
 	}
 	
 	@Transactional(readOnly = false)
-	public void execute(Executable obj){
-		obj.execute(this.template);
+	public void execute(Executable... objs){
+		for (Executable ex : objs) {
+			ex.execute(this.template);
+		}
 	}
 }
