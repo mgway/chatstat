@@ -13,10 +13,11 @@ import org.springframework.jms.core.MessageCreator;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
-import org.springframework.messaging.simp.annotation.SendToUser;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
-import com.matthewgalloway.stats.db.InsertDatapointStub;
+import com.matthewgalloway.stats.db.InsertDatapointCommand;
+import com.matthewgalloway.stats.domain.Datapoint;
 import com.matthewgalloway.stats.domain.Stream;
 import com.matthewgalloway.stats.framework.DatabaseService;
 
@@ -35,33 +36,26 @@ public class FollowerController {
 	
 	@Autowired
 	private transient TwitchApiClient client;
-		
+	
+	@Autowired
+	private SimpMessagingTemplate wsTemplate;
+	
 	
 	@MessageMapping("/hello")
-	@SendTo("/topic/meta")
-    public Stream handle(String streamerName) {
+    public void handle(String streamerName) {
 		
 		if (streamerName.trim().isEmpty()) {
 			throw new StreamException("Streamer name is empty");
 		}
 		streamerName = streamerName.toLowerCase();
 		
-		final Stream stream = client.getStreamData(streamerName);
+		Datapoint datapoint = client.getStreamData(streamerName);
 		
-		if (stream != null) {
-			InsertDatapointStub stub = new InsertDatapointStub(streamerName);
-			db.execute(stub);
-			final long datapointId = stub.getId();
+		if (datapoint != null) {
+			db.execute(new InsertDatapointCommand(datapoint));
 			
-			this.jmsTemplate.send(this.queue, new MessageCreator() {
-	            public Message createMessage(Session session) throws JMSException {
-	                ObjectMessage message = session.createObjectMessage(stream);
-	                message.setLongProperty("datapointId", datapointId);
-	                return message;
-	            }
-	        });
-			
-			return stream;
+			this.jmsTemplate.convertAndSend(this.queue, datapoint);
+			this.wsTemplate.convertAndSend("/topic/" + streamerName + "/meta", datapoint);
 		}
 		
         throw new StreamException("Stream is offline");

@@ -14,10 +14,17 @@ public class Datapoint implements Serializable {
 	private String comment;
 	private int followerCount;
 	private int subscriberCount;
+	private int chatterCount;
 	private int viewerCount;
 	private boolean isPartner;
 	private Timestamp createDate;
 
+	public Datapoint() {}
+	
+	public Datapoint(String streamer) {
+		this.streamer = streamer;
+	}
+	
 	public long getId() {
 		return id;
 	}
@@ -72,6 +79,14 @@ public class Datapoint implements Serializable {
 
 	public void setSubscriberCount(int subscriberCount) {
 		this.subscriberCount = subscriberCount;
+	}
+
+	public int getChatterCount() {
+		return chatterCount;
+	}
+
+	public void setChatterCount(int chatterCount) {
+		this.chatterCount = chatterCount;
 	}
 
 	public int getViewerCount() {

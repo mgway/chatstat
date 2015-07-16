@@ -2,161 +2,338 @@
 <html>
 <head>
 	<meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    
-    <title>Twitch Chat Statistics</title>
-    
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
-    
-    <style type="text/css">
-    	table#summary th + th { border-left:1px solid #eee; }
-    	table#summary td + td { border-left:1px solid #eee; }
-    </style>
-    
-    <script src="//cdnjs.cloudflare.com/ajax/libs/sockjs-client/0.3.4/sockjs.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.js"></script>
-    <script src="//code.jquery.com/jquery-1.11.3.min.js"></script>
-    
-    <script type="text/javascript">
-		var stompClient = null,
-			chatFollowerCount = 0,
-			chatViewerCount = 0,
-			chatSubscriberCount = 0,
-			interval = null,
-			subscription = null, 
-			lastSubscribedTo = null;
-        
-		function setConnected(connected) {
-			document.getElementById('connect').disabled = connected;
-			document.getElementById('disconnect').disabled = !connected;
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	
+	<title>Twitch Chat Statistics</title>
+	
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+	
+	<style type="text/css">
+		table#summary th+th {
+			border-left: 1px solid #eee;
 		}
-
-		function connect() {
-			var socket = new SockJS('/hello');
-			stompClient = Stomp.over(socket);
-			stompClient.connect({}, function(frame) {
-				setConnected(true);
-				console.log('Connected: ' + frame);
-				
-				stompClient.subscribe('/topic/meta', function(stream){
-					handleMetadata(JSON.parse(stream.body));
+		
+		table#summary td+td {
+			border-left: 1px solid #eee;
+		}
+	</style>
+	
+	<script type="text/javascript"
+		src="//cdnjs.cloudflare.com/ajax/libs/sockjs-client/0.3.4/sockjs.min.js"></script>
+	<script type="text/javascript"
+		src="//cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.js"></script>
+	<script type="text/javascript"
+		src="//code.jquery.com/jquery-1.11.3.min.js"></script>
+	<script type="text/javascript"
+		src="//cdnjs.cloudflare.com/ajax/libs/canvasjs/1.7.0/jquery.canvasjs.min.js"></script>
+	
+	<script type="text/javascript">
+		$(document).ready(function() {
+			var stompClient = null, chatChatterCount = 0, chatFollowerCount = 0, chatViewerCount = 0, 
+				chatSubscriberCount = 0, interval = null, subscription = null, lastSubscribedTo = null, 
+				updateInProgress = false, metadata = {}, metaSubscription = null;
+	
+			function setConnected(connected) {
+				document.getElementById('connect').disabled = connected;
+				document.getElementById('disconnect').disabled = !connected;
+			}
+	
+			function connect() {
+				var socket = new SockJS('/hello');
+				stompClient = Stomp.over(socket);
+				stompClient.connect({}, function(frame) {
+					setConnected(true);
+					console.log('Connected: ' + frame);
+	
+					stompClient.subscribe('/topic/meta/error', function(
+							stream) {
+						console.log(JSON.parse(stream.body));
+					});
 				});
-				
-				stompClient.subscribe('/topic/error', function(stream){
-					console.log(JSON.parse(stream.body));
-				});
+			}
+	
+			function disconnect() {
+				if (stompClient != null) {
+					stompClient.disconnect();
+				}
+				setConnected(false);
+				console.log("Disconnected");
+			}
+	
+			function reset() {
+				chatChatterCount = 0;
+				chatFollowerCount = 0;
+				chatSubscriberCount = 0;
+				chatViewerCount = 0;
+	
+				$('#viewer-count').text("0");
+				$('#chatter-count').text("0");
+				$('#follower-count').text("0");
+				$('#subscriber-count').text("0");
+				$('#follower-table').html("");
+				$('#not-follower-table').html("");
+			}
+	
+			$("#calculate-btn").on("click", sendName);
+			function sendName() {
+				var name = $('#name').val().toLowerCase();
+	
+				reset();
+	
+				if (lastSubscribedTo != name
+						&& lastSubscribedTo != null) {
+					subscription.unsubscribe();
+					subscription = null;
+					metaSubscription.unsubscribe();
+				}
+	
+				if (subscription == null) {
+					lastSubscribedTo = name;
+					metaSubscription = stompClient.subscribe('/topic/'+name+'/meta', 
+							function(stream) {
+						handleMetadata(JSON.parse(stream.body));
+					});
+					
+					subscription = stompClient.subscribe('/topic/'
+							+ name, function(viewer) {
+						addViewer(JSON.parse(viewer.body));
+					});
+				}
+	
+				stompClient.send("/app/hello", {}, name);
+			}
+	
+			// Called every 2 seconds during a refresh. If the flag has not been cleared, 
+			// we'll conclude that the refresh has completed and redraw the chart
+			function checkUpdateProgress() {
+				if (updateInProgress) {
+					setTimeout(function() {
+						checkUpdateProgress();
+					}, 2000);
+					updateInProgress = false;
+				} else {
+					updateChart();
+				}
+			}
+	
+			$("#refresh-check").on("click", function() {
+				if (this.checked) {
+					interval = setInterval(function() {
+						sendName();
+					}, 300000);
+				} else {
+					clearInterval(interval);
+				}
 			});
-		}
-
-		function disconnect() {
-			if (stompClient != null) {	
-				stompClient.disconnect();
+	
+			function handleMetadata(response) {
+				chatViewerCount = response.viewerCount;
+				metadata = response;
+				$("#viewer-count").text(chatViewerCount);
+				
+				// Set up the chart refresh process
+				updateInProgress = true;
+				setTimeout(function() {
+					checkUpdateProgress();
+				}, 4000);
 			}
-			setConnected(false);
-			console.log("Disconnected");
-		}
-
-		function reset() {
-			chatFollowerCount = 0;
-			chatSubscriberCount = 0;
-			chatViewerCount = 0;
-			         
-			$('#viewer-count').text("0");
-			$('#chatter-count').text("0");
-			$('#follower-count').text("0");
-			$('#subscriber-count').text("0");
-			$('#follower-table').html("");
-			$('#not-follower-table').html("");
-		}
-        
-        function sendName() {
-            var name = $('#name').val().toLowerCase();
-            
-            reset();
-            
-            if (lastSubscribedTo != name && lastSubscribedTo != null) {
-        		subscription.unsubscribe();
-        		subscription = null;
-        	}
-            
-            if (subscription == null) {
-            	lastSubscribedTo = name;
-            	subscription = stompClient.subscribe('/topic/' + name, function(viewer){
-                	addViewer(JSON.parse(viewer.body));
-                });	
-            }
-            
-            stompClient.send("/app/hello", {}, name);
-        }
-        
-		function updateAutomatically() {
-			var isChecked = document.getElementById('refresh-check').checked;
+	
+			function addViewer(response) {
+				updateInProgress = true;
+	
+				var table = document
+						.getElementById('follower-table'), notTable = document
+						.getElementById('not-follower-table'), tr = document
+						.createElement('tr'), td1 = document
+						.createElement('td'), td2 = document
+						.createElement('td');
+	
+				chatChatterCount += 1;
+				if (response.follower) {
+					chatFollowerCount += 1;
+				}
+	
+				$("#chatter-count").text(chatChatterCount);
+				var followersEl = ""
+						+ chatFollowerCount
+						+ " <span style='font-size: smaller'> ("
+						+ ((chatFollowerCount / (chatChatterCount)) * 100)
+								.toFixed(1) + "%)</span>"
+				$("#follower-count").html(followersEl);
+	
+				var subscribersEl = ""
+						+ chatSubscriberCount
+						+ " <span style='font-size: smaller'> ("
+						+ ((chatSubscriberCount / (chatChatterCount)) * 100)
+								.toFixed(1) + "%)</span>"
+				$("#subscriber-count").html(subscribersEl);
+	
+				td1.appendChild(document
+						.createTextNode(response.name));
+				td2.appendChild(document
+						.createTextNode(response.follower));
+				tr.appendChild(td1);
+				tr.appendChild(td2);
+				if (response.follower) {
+					//table.appendChild(tr);
+				} else {
+					notTable.appendChild(tr);
+				}
+			}
+	
+			var graphShown = false;
+			$("#show-graph").on("click", function() {
+				if(graphShown) {
+					$("#chartContainer").hide();
+					$(this).text("I solemnly swear that I am up to no good").removeClass("btn-success").addClass("btn-warning");
+					graphShown = false;
+				} else {
+					$("#chartContainer").show();
+					$(this).text("Mischief managed").removeClass("btn-warning").addClass("btn-success");
+					graphShown = true;
+					chart.render();
+				}
+			});
+	
+			var dataPoints1 = [], dataPoints2 = [], dataPoints3 = [];
+	
+			var chart = new CanvasJS.Chart(
+					"chartContainer",
+					{
+						zoomEnabled : true,
+						toolTip : {
+							shared : true,
+							contentFormatter: function(e){
+								var dt = new Date(e.entries[0].dataPoint.x);
+								var str = "<strong>" + ii(dt.getHours(),2) + ":" + ii(dt.getMinutes(),2) + "</strong><br />" + e.entries[0].dataPoint.game + "<br />";
+								for (var i = 0; i < e.entries.length; i++){
+									var entry = e.entries[i];
+									var temp = "<span style='color:" + entry.dataSeries.color+"'>" + 
+										entry.dataSeries.name + "</span>: <strong>" + entry.dataPoint.y + "</strong> <br/>"; 
+									str = str.concat(temp);
+								}
+								return (str);
+							}	
+						},
+						legend : {
+							verticalAlign : "top",
+							horizontalAlign : "center",
+							fontSize : 14,
+							fontWeight : "bold",
+							fontFamily : "arial",
+							fontColor : "dimGrey"
+						},
+						axisY : {
+							includeZero : false
+						},
+						data : [ {
+							// Viewers
+							type : "line",
+							xValueType : "dateTime",
+							showInLegend : true,
+							name : "Viewers",
+							dataPoints : dataPoints1,
+							legendText : "Viewers"
+						}, {
+							// Chatters
+							type : "line",
+							xValueType : "dateTime",
+							showInLegend : true,
+							name : "Chatters",
+							dataPoints : dataPoints2,
+							legendText : "Chatters"
+						}, {
+							// Followers
+							type : "line",
+							xValueType : "dateTime",
+							showInLegend : true,
+							name : "Followers",
+							dataPoints : dataPoints3,
+							legendText : "Followers"
+						} ],
+						legend : {
+							cursor : "pointer",
+							itemclick : function(e) {
+								if (typeof (e.dataSeries.visible) === "undefined"
+										|| e.dataSeries.visible) {
+									e.dataSeries.visible = false;
+								} else {
+									e.dataSeries.visible = true;
+								}
+								chart.render();
+							}
+						}
+					});
+	
+			var updateChart = function() {
+				var time = new Date();
+	
+				dataPoints1.push({
+					x : time.getTime(),
+					y : chatViewerCount,
+					game : "" + metadata.game
+				});
+				dataPoints2.push({
+					x : time.getTime(),
+					y : chatChatterCount
+				});
+				dataPoints3.push({
+					x : time.getTime(),
+					y : chatFollowerCount
+				});
+	
+				chart.render();
+			};
+	
+			function ii(i, len) {
+		        var s = i + "";
+		        len = len || 2;
+		        while (s.length < len) s = "0" + s;
+		        return s;
+		    }
 			
-			if (isChecked) {
-				interval = setInterval(function(){ sendName(); }, 420000); //
-			} else {
-				interval.clearInterval();
-			}
-		}
-        
-		function handleMetadata(response) {
-			$("#viewer-count").text(response.totalViewerCount);
-		}
-        
-        function addViewer(response) {
-        	
-        	var table = document.getElementById('follower-table'),
-        		notTable = document.getElementById('not-follower-table'),
-            	tr = document.createElement('tr'),
-            	td1 = document.createElement('td'),
-            	td2 = document.createElement('td');
-        	
-        	chatViewerCount += 1;
-        	if(response.follower) {
-        		chatFollowerCount += 1;
-        	}
-        	
-        	$("#chatter-count").text(chatViewerCount);
-        	var followersEl = "" + chatFollowerCount + " <span style='font-size: smaller'> (" + ((chatFollowerCount/(chatViewerCount)) * 100).toFixed(1) + "%)</span>"
-        	$("#follower-count").html(followersEl);
-        	
-        	var subscribersEl = "" + chatSubscriberCount + " <span style='font-size: smaller'> (" + ((chatSubscriberCount/(chatViewerCount)) * 100).toFixed(1) + "%)</span>"
-        	$("#subscriber-count").html(subscribersEl);
-        	
-            td1.appendChild(document.createTextNode(response.name));
-            td2.appendChild(document.createTextNode(response.follower));
-            tr.appendChild(td1);
-            tr.appendChild(td2);
-            if(response.follower){
-            	//table.appendChild(tr);
-            } else {
-            	notTable.appendChild(tr);
-            }
-        }
-    </script>
+			chart.render();
+			// Connect to websocket automatically
+			connect();
+		});
+	</script>
 </head>
-<body onload="connect()">
+<body>
 	<noscript>
 		<h2 style="color: #ff0000">Seems your browser doesn't support
 			Javascript! Websocket relies on Javascript being enabled. Please
 			enable Javascript and reload this page!</h2>
 	</noscript>
 	<div class="container">
-		<h1>Twitch Chat Statistics<span style="font-size: small"> (beta)</span></h1>
+		<h1>
+			Twitch Chat Statistics<span style="font-size: small"> (beta)</span>
+		</h1>
 
-		<div class="form-inline">
-			<div class="form-group">
-				<label for="name">Streamer Name</label> <input type="text"
-					class="form-control" id="name" placeholder="itmejp">
-			</div>
-			<button type="submit" class="btn btn-primary" onclick="sendName();">Calculate!</button>
-			<div class="checkbox">
-				<label> 
-					<input type="checkbox" id="refresh-check" onclick="updateAutomatically();"> Update every 7 minutes
-				</label>
+		<div class="row">
+		<div class="col-md-8">
+			<div class="form-inline">
+				<div class="form-group">
+					<label for="name">Streamer Name</label> <input type="text"
+						class="form-control" id="name" placeholder="itmejp">
+				</div>
+				<button type="submit" class="btn btn-primary" id="calculate-btn">Calculate!</button>
+				<div class="checkbox">
+					<label> <input type="checkbox" id="refresh-check">
+						Update every 5 minutes
+					</label>
+				</div>
 			</div>
 		</div>
-
+		<div class="col-md-3 col-md-offset-1">
+			<div>
+				<span>Debugging buttons</span><br />
+				<button class="btn btn-success btn-sm" id="connect"
+					onclick="connect();">Connect</button>
+				<button class="btn btn-danger btn-sm" id="disconnect"
+					disabled="disabled" onclick="disconnect();">Disconnect</button>
+			</div>
+		</div>
+		</div>
 		<div class="row" style="padding-top: 20px;">
 			<div class="col-md-3">
 				<h2>Overview</h2>
@@ -178,18 +355,19 @@
 						</tr>
 					</tbody>
 				</table>
-			</div>
-			<div class="col-md-3 col-md-offset-6">
-				<div>
-					<h5>Websocket Debug</h5>
-					<button class="btn btn-success btn-sm" id="connect" onclick="connect();">Connect</button>
-					<button class="btn btn-danger btn-sm" id="disconnect" disabled="disabled"
-						onclick="disconnect();">Disconnect</button>
-				</div>
+				<button class="btn btn-warning btn-sm" id="show-graph"
+					title="Show me the graph">I solemnly swear that I am up to no good</button>
 			</div>
 		</div>
-		<div class="row">
+
+		<div class="row" id="graph">
+			<div id="chartContainer"
+				style="height: 300px; width: 100%; display: none;"></div>
+		</div>
+
+		<div class="row" style="padding-top: 20px;">
 			<div class="col-md-4">
+				<h2>Followers</h2>
 				<table class="table table-striped">
 					<thead>
 						<tr>
@@ -201,8 +379,9 @@
 					</tbody>
 				</table>
 			</div>
-			
+
 			<div class="col-md-4 col-md-offset-2">
+				<h2>Not Followers</h2>
 				<table class="table table-striped">
 					<thead>
 						<tr>

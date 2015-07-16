@@ -3,6 +3,7 @@ package com.matthewgalloway.stats;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -11,7 +12,7 @@ import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
-import com.matthewgalloway.stats.domain.Stream;
+import com.matthewgalloway.stats.domain.Datapoint;
 
 @Service
 public class TwitchApiClient {
@@ -74,30 +75,32 @@ public class TwitchApiClient {
 		return false;
 	}
 	
-	public Stream getStreamData(String streamer) {
-		String url = String.format("%s/streams/%s", API_ROOT, streamer);
-		
+	public Datapoint getStreamData(String streamer) {
+		String url = String.format("%s/streams/%s", API_ROOT, streamer);	
+		HttpResponse<JsonNode> response = null;
 		try {
-			HttpResponse<JsonNode> response = krakenApiCall(url);
+			response = krakenApiCall(url);
 			
 			if (response.getStatus() == 200) {
-				Stream stream = new Stream(streamer);
+				Datapoint datapoint = new Datapoint(streamer);
 				
 				if (!response.getBody().getObject().isNull("stream")) {
 					JSONObject obj = response.getBody().getObject().getJSONObject("stream");
-					stream.setGame(obj.getString("game"));
-					stream.setMature(obj.getJSONObject("channel").getBoolean("mature"));
-					stream.setPartner(obj.getJSONObject("channel").getBoolean("partner"));
-					stream.setStatus(obj.getJSONObject("channel").getString("status"));
-					stream.setTotalViewerCount(obj.getInt("viewers"));
-					stream.setStartTime(obj.getString("created_at"));
-					return stream;
+					datapoint.setGame(obj.getString("game"));
+					if (!obj.isNull("channel")) {
+						datapoint.setPartner(obj.getJSONObject("channel").getBoolean("partner"));
+						datapoint.setStatus(obj.getJSONObject("channel").getString("status"));
+					}
+					datapoint.setViewerCount(obj.getInt("viewers"));
+					return datapoint;
 				} else {
 					return null;
 				}
 			}
 		} catch (ApiException e) {
 			// Pass
+		} catch (JSONException e) {
+			System.out.println(response.getBody());
 		}
 		
 		return null;
@@ -111,6 +114,8 @@ public class TwitchApiClient {
 					.asJson();
 			if (response.getStatus() == 200) {
 				return response;
+			} else if (response.getStatus() == 404) {
+				throw new ApiException("404 Response");
 			} else {
 				System.out.println(response.getBody());
 				throw new ApiException(String.format("Got response code %d", response.getStatus()));
@@ -181,16 +186,8 @@ public class TwitchApiClient {
 	private class ApiException extends RuntimeException  {
 		private static final long serialVersionUID = 1L;
 
-		public ApiException() {
-			super();
-		}
-
 		public ApiException(String s) {
 			super(s);
-		}
-
-		public ApiException(String s, Throwable throwable) {
-			super(s, throwable);
 		}
 
 		public ApiException(Throwable throwable) {

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS datapoint (
 	datapoint_id identity not null,
 	streamer_name varchar(30) not null,
 	viewer_count int default 0,
+	chatter_count int default 0,
 	follower_count int default 0,
 	subscriber_count int default 0,
 	game_name varchar(200),

@@ -9,12 +9,12 @@ import org.springframework.jdbc.core.PreparedStatementSetter;
 import com.matthewgalloway.stats.domain.Viewer;
 import com.matthewgalloway.stats.framework.Executable;
 
-public class UpdateDatapoint implements Executable {
+public class AddToDatapointCommand implements Executable {
 	
 	private String sql_ammendment;
 	private long datapointId;
 	
-	public UpdateDatapoint(Viewer viewer, long datapointId) {
+	public AddToDatapointCommand(Viewer viewer, long datapointId) {
 		this.datapointId = datapointId;
 		
 		sql_ammendment = "";
@@ -28,7 +28,7 @@ public class UpdateDatapoint implements Executable {
 	}
 	
 	public void execute(JdbcTemplate template) {
-		template.update("UPDATE datapoint SET viewer_count = viewer_count + 1 " + sql_ammendment + " WHERE datapoint_id = ?", new PreparedStatementSetter() {
+		template.update("UPDATE datapoint SET chatter_count = chatter_count + 1 " + sql_ammendment + " WHERE datapoint_id = ?", new PreparedStatementSetter() {
 			@Override
 			public void setValues(PreparedStatement ps) throws SQLException {
 				ps.setLong(1, datapointId);

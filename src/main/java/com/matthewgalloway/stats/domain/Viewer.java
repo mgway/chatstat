@@ -3,6 +3,8 @@ package com.matthewgalloway.stats.domain;
 import java.io.Serializable;
 import java.sql.Timestamp;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public class Viewer implements Serializable {
 
 	private static final long serialVersionUID = 1L;
@@ -14,6 +16,8 @@ public class Viewer implements Serializable {
 	private Timestamp createDate;
 	private Timestamp updateDate;
 
+	public Viewer() {}
+	
 	public Viewer(String name, String streamer, boolean isFollower) {
 		this.name = name;
 		this.isFollower = isFollower;
@@ -36,6 +40,7 @@ public class Viewer implements Serializable {
 		this.isFollower = isFollower;
 	}
 
+	@JsonIgnore
 	public String getStreamer() {
 		return streamer;
 	}
@@ -52,6 +57,7 @@ public class Viewer implements Serializable {
 		this.isSubscriber = isSubscriber;
 	}
 
+	@JsonIgnore
 	public Timestamp getCreateDate() {
 		return createDate;
 	}
@@ -60,6 +66,7 @@ public class Viewer implements Serializable {
 		this.createDate = createDate;
 	}
 
+	@JsonIgnore
 	public Timestamp getUpdateDate() {
 		return updateDate;
 	}

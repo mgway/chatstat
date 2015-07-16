@@ -9,32 +9,16 @@ import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 
+import com.matthewgalloway.stats.domain.Datapoint;
 import com.matthewgalloway.stats.framework.Executable;
 
-public class InsertDatapointStub implements Executable {
-	final String INSERT_SQL = "INSERT INTO datapoint (streamer_name, create_date) VALUES (?, CURRENT_TIMESTAMP)";
+public class InsertDatapointCommand implements Executable {
+	final String INSERT_SQL = "INSERT INTO datapoint (streamer_name, game_name, status, create_date) VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
 
-	private String streamerName;
-	private long id;
+	private Datapoint datapoint;
 	
-	public InsertDatapointStub(String streamerName) {
-		this.streamerName = streamerName;
-	}
-	
-	public String getStreamerName() {
-		return streamerName;
-	}
-
-	public void setStreamerName(String streamerName) {
-		this.streamerName = streamerName;
-	}
-
-	public long getId() {
-		return id;
-	}
-
-	public void setId(long id) {
-		this.id = id;
+	public InsertDatapointCommand(Datapoint datapoint) {
+		this.datapoint = datapoint;
 	}
 
 	public void execute(JdbcTemplate template) {
@@ -44,12 +28,14 @@ public class InsertDatapointStub implements Executable {
 			@Override
 			public PreparedStatement createPreparedStatement(Connection con) throws SQLException {
 				PreparedStatement ps = con.prepareStatement(INSERT_SQL, new String[] {"datapoint_id"});
-	            ps.setString(1, streamerName);
+				ps.setString(1, datapoint.getStreamer());
+				ps.setString(2, datapoint.getGame());
+				ps.setString(3, datapoint.getStatus());
 	            return ps;
 			}
 	    },
 	    keyHolder);
 		
-		this.id = keyHolder.getKey().longValue();
+		this.datapoint.setId(keyHolder.getKey().longValue());
 	}
 }
