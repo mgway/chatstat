@@ -1,15 +1,10 @@
 package com.matthewgalloway.stats;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.ObjectMessage;
 import javax.jms.Queue;
-import javax.jms.Session;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jms.core.JmsTemplate;
-import org.springframework.jms.core.MessageCreator;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -18,7 +13,6 @@ import org.springframework.stereotype.Controller;
 
 import com.matthewgalloway.stats.db.InsertDatapointCommand;
 import com.matthewgalloway.stats.domain.Datapoint;
-import com.matthewgalloway.stats.domain.Stream;
 import com.matthewgalloway.stats.framework.DatabaseService;
 
 @Controller
@@ -56,6 +50,7 @@ public class FollowerController {
 			
 			this.jmsTemplate.convertAndSend(this.queue, datapoint);
 			this.wsTemplate.convertAndSend("/topic/" + streamerName + "/meta", datapoint);
+			return;
 		}
 		
         throw new StreamException("Stream is offline");
@@ -64,7 +59,7 @@ public class FollowerController {
 	@MessageExceptionHandler
 	@SendTo(value="/topic/error")
     public String handleException(StreamException exception) {
-        return exception.getMessage();
+        return exception.getLocalizedMessage();
     }
 	
 	private class StreamException extends RuntimeException  {

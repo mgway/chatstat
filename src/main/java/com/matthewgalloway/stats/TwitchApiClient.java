@@ -37,7 +37,7 @@ public class TwitchApiClient {
 	 */
 	public boolean isFollowing(String streamer, String viewer) {
 		String url = String.format("%s/users/%s/follows/channels/%s/", API_ROOT, viewer, streamer);
-		
+
 		try {
 			HttpResponse<JsonNode> response = krakenApiCall(url);
 			

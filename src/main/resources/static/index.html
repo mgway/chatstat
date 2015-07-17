@@ -37,21 +37,22 @@
 				document.getElementById('connect').disabled = connected;
 				document.getElementById('disconnect').disabled = !connected;
 			}
-	
+			
+			$("#connect").on("click", connect);
 			function connect() {
 				var socket = new SockJS('/hello');
 				stompClient = Stomp.over(socket);
+				stompClient.debug = null;
 				stompClient.connect({}, function(frame) {
 					setConnected(true);
-					console.log('Connected: ' + frame);
 	
-					stompClient.subscribe('/topic/meta/error', function(
-							stream) {
-						console.log(JSON.parse(stream.body));
+					stompClient.subscribe('/topic/error', function(message) {
+						$("#message").text(message.body);
 					});
 				});
 			}
 	
+			$("#disconnect").on("click", disconnect);
 			function disconnect() {
 				if (stompClient != null) {
 					stompClient.disconnect();
@@ -72,6 +73,7 @@
 				$('#subscriber-count').text("0");
 				$('#follower-table').html("");
 				$('#not-follower-table').html("");
+				$("#message").text("");
 			}
 	
 			$("#calculate-btn").on("click", sendName);
@@ -327,16 +329,16 @@
 		<div class="col-md-3 col-md-offset-1">
 			<div>
 				<span>Debugging buttons</span><br />
-				<button class="btn btn-success btn-sm" id="connect"
-					onclick="connect();">Connect</button>
+				<button class="btn btn-success btn-sm" id="connect">Connect</button>
 				<button class="btn btn-danger btn-sm" id="disconnect"
-					disabled="disabled" onclick="disconnect();">Disconnect</button>
+					disabled="disabled">Disconnect</button>
 			</div>
 		</div>
 		</div>
 		<div class="row" style="padding-top: 20px;">
 			<div class="col-md-3">
 				<h2>Overview</h2>
+				<p id="message" style="color: red"></p>
 				<table class="table" id="summary">
 					<thead>
 						<tr>
@@ -367,20 +369,6 @@
 
 		<div class="row" style="padding-top: 20px;">
 			<div class="col-md-4">
-				<h2>Followers</h2>
-				<table class="table table-striped">
-					<thead>
-						<tr>
-							<th>Name</th>
-							<th>Follows?</th>
-						</tr>
-					</thead>
-					<tbody id="follower-table">
-					</tbody>
-				</table>
-			</div>
-
-			<div class="col-md-4 col-md-offset-2">
 				<h2>Not Followers</h2>
 				<table class="table table-striped">
 					<thead>
