@@ -56,23 +56,27 @@ public class FollowerQueueListener {
 	@JmsListener(destination = "chatstat.viewers")
 	public void beginFetchFollowers(Datapoint point) {
 		
-		List<String> usernames = client.getChatMembers(point.getStreamer());
-		if (usernames != null) {
-			for(String name : usernames) {
-				final Viewer viewer = new Viewer(name, point.getStreamer(), false);			
-				final Datapoint pointCopy = point;
-				
-				this.jmsTemplate.send(this.lookupQueue, new MessageCreator() {
-		            public Message createMessage(Session session) throws JMSException {
-		                ObjectMessage message = session.createObjectMessage(viewer);
-		                message.setLongProperty("datapointId", pointCopy.getId());
-		                return message;
-		            }
-		        });
-			}
-			point.setChatterCount(usernames.size());
-			db.execute(new UpdateDatapointCommand(point));
-		}	
+		try {
+			List<String> usernames = client.getChatMembers(point.getStreamer());
+			if (usernames != null) {
+				for(String name : usernames) {
+					final Viewer viewer = new Viewer(name, point.getStreamer(), false);			
+					final Datapoint pointCopy = point;
+					
+					this.jmsTemplate.send(this.lookupQueue, new MessageCreator() {
+			            public Message createMessage(Session session) throws JMSException {
+			                ObjectMessage message = session.createObjectMessage(viewer);
+			                message.setLongProperty("datapointId", pointCopy.getId());
+			                return message;
+			            }
+			        });
+				}
+				point.setChatterCount(usernames.size());
+				db.execute(new UpdateDatapointCommand(point));
+			}	
+		} catch (RuntimeException e) {
+			this.wsTemplate.convertAndSend("/topic/" + point.getStreamer() + "/error", e.getLocalizedMessage());
+		}
 	} 
 	
 	/**

@@ -3,7 +3,6 @@ package com.matthewgalloway.stats;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -13,6 +12,7 @@ import com.mashape.unirest.http.JsonNode;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import com.matthewgalloway.stats.domain.Datapoint;
+import com.matthewgalloway.stats.exception.ApiException;
 
 @Service
 public class TwitchApiClient {
@@ -96,14 +96,13 @@ public class TwitchApiClient {
 				} else {
 					return null;
 				}
+			} else {
+				System.out.println(response.getStatusText());
+				throw new ApiException("Twitch API returned an error code, view the console for more details");
 			}
-		} catch (ApiException e) {
-			// Pass
-		} catch (JSONException e) {
-			System.out.println(response.getBody());
+		} catch (RuntimeException e) {
+			throw new ApiException(e);
 		}
-		
-		return null;
 	}
 	
 	private HttpResponse<JsonNode> krakenApiCall(String url) {
@@ -120,7 +119,7 @@ public class TwitchApiClient {
 				System.out.println(response.getBody());
 				throw new ApiException(String.format("Got response code %d", response.getStatus()));
 			}
-		} catch (UnirestException e) {
+		} catch (UnirestException | RuntimeException e) {
 			throw new ApiException(e);
 		}
 	}
@@ -169,31 +168,11 @@ public class TwitchApiClient {
 				}
 				
 				return names;
-			} else if (response.getStatus() == 404) {
-				return null;
-			} else {
-				System.out.println(response.getBody());
-				return null;
-			}
-		} catch (UnirestException e) {
-			// TODO Auto-generated catch block
+			} 
+		} catch (UnirestException | RuntimeException e) {
 			e.printStackTrace();
 		}
 		
-		return null;
-	}
-	
-	private class ApiException extends RuntimeException  {
-		private static final long serialVersionUID = 1L;
-
-		public ApiException(String s) {
-			super(s);
-		}
-
-		public ApiException(Throwable throwable) {
-			super(throwable);
-		}
+		throw new ApiException("Error fetching chatter list from TMI");
 	}
 }
-
-

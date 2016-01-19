@@ -17,56 +17,55 @@ import com.matthewgalloway.stats.framework.DatabaseService;
 
 @Controller
 public class FollowerController {
-	
+
 	@Autowired
 	private JmsTemplate jmsTemplate;
 
 	@Autowired
 	@Qualifier("beginViewersUpdate")
 	private Queue queue;
-	
+
 	@Autowired
 	private transient DatabaseService db;
-	
+
 	@Autowired
 	private transient TwitchApiClient client;
-	
+
 	@Autowired
 	private SimpMessagingTemplate wsTemplate;
-	
-	
+
 	@MessageMapping("/hello")
-    public void handle(String streamerName) {
-		
+	public void handle(String streamerName) {
+
 		if (streamerName.trim().isEmpty()) {
 			throw new StreamException("Streamer name is empty");
 		}
 		streamerName = streamerName.toLowerCase();
-		
+
 		Datapoint datapoint = client.getStreamData(streamerName);
-		
+
 		if (datapoint != null) {
 			db.execute(new InsertDatapointCommand(datapoint));
-			
+
 			this.jmsTemplate.convertAndSend(this.queue, datapoint);
 			this.wsTemplate.convertAndSend("/topic/" + streamerName + "/meta", datapoint);
 			return;
 		}
-		
-        throw new StreamException("Stream is offline");
-    }
-	
+
+		throw new StreamException("Stream is offline");
+	}
+
 	@MessageExceptionHandler
-	@SendTo(value="/topic/error")
-    public String handleException(StreamException exception) {
-        return exception.getLocalizedMessage();
-    }
-	
-	private class StreamException extends RuntimeException  {
+	@SendTo(value = "/topic/error")
+	public String handleException(StreamException exception) {
+		return exception.getLocalizedMessage();
+	}
+
+	private class StreamException extends RuntimeException {
 		private static final long serialVersionUID = 1L;
 
 		public StreamException(String s) {
 			super(s);
 		}
-	} 
+	}
 }

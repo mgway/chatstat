@@ -31,7 +31,7 @@
 		$(document).ready(function() {
 			var stompClient = null, chatChatterCount = 0, chatFollowerCount = 0, chatViewerCount = 0, 
 				chatSubscriberCount = 0, interval = null, subscription = null, lastSubscribedTo = null, 
-				updateInProgress = false, metadata = {}, metaSubscription = null;
+				updateInProgress = false, metadata = {}, metaSubscription = null, errorSubscription = null;
 	
 			function setConnected(connected) {
 				document.getElementById('connect').disabled = connected;
@@ -87,6 +87,7 @@
 					subscription.unsubscribe();
 					subscription = null;
 					metaSubscription.unsubscribe();
+					errorSubscription.unsubscribe();
 				}
 	
 				if (subscription == null) {
@@ -94,6 +95,11 @@
 					metaSubscription = stompClient.subscribe('/topic/'+name+'/meta', 
 							function(stream) {
 						handleMetadata(JSON.parse(stream.body));
+					});
+					
+					errorSubscription = stompClient.subscribe('/topic/'+name+'/error', 
+							function(stream) {
+						handleError(stream.body);
 					});
 					
 					subscription = stompClient.subscribe('/topic/'
@@ -138,6 +144,10 @@
 				setTimeout(function() {
 					checkUpdateProgress();
 				}, 4000);
+			}
+			
+			function handleError(response) {
+				$("#message").text(response);
 			}
 	
 			function addViewer(response) {
@@ -369,7 +379,7 @@
 
 		<div class="row" style="padding-top: 20px;">
 			<div class="col-md-4">
-				<h2>Not Followers</h2>
+				<h2>Not Following</h2>
 				<table class="table table-striped">
 					<thead>
 						<tr>
