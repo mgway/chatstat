@@ -1,2 +1,2 @@
-java -jar twitch-chatstat-0.1.jar
+java -jar twitch-chatstat-0.3.jar
 

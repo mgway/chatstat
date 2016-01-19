@@ -17,7 +17,7 @@ Do you stream on Twitch? Did you ever want to know how many viewers in your chat
     * Shift + right click in the Explorer window containing the extracted files
     * Select "Open command window here"
     * Type "java -jar twitch-chatstat" and then hit tab to autocomplete the rest of the file name
-    * It should look like `java -jar twitch-chatstat-0.1.jar`, with potentially different numbers at the end
+    * It should look like `java -jar twitch-chatstat-0.3.jar`, with potentially different numbers at the end
     * Hit enter to run the application
 * Browse to [http://localhost:8080](http://localhost:8080) to see the application
 * When you're done with the app, press ctrl+c and then 'y' in the command window for a graceful shutdown, or click the normal close button if you just don't care
@@ -51,7 +51,6 @@ Do you stream on Twitch? Did you ever want to know how many viewers in your chat
 
 
 ## To Do/Forthcoming Features
-* Graphs 'n' stuff
 * Subscriber counts
 * Flexible retry intervals
 * Less noisy viewer count updates
